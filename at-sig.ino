@@ -17,6 +17,8 @@
 #include <TimerOne.h>
 #include <EEPROM.h>
 
+#define USE_SERIAL 1
+
 #define DISP_CLK  2
 #define DISP_DIO  3
 #define INPUT_CLK 4
@@ -53,7 +55,9 @@ void timerIsr() {
 }
 
 void setup() {
+#ifdef USE_SERIAL
   Serial.begin(9600);
+#endif 
 
   int key = 0b00000000;
   EEPROM.get(EEPROM_KEY_ADDY,key);
@@ -87,8 +91,10 @@ void loop() {
    
   if (value != last) {
     last = value; 
+#ifdef USE_SERIAL
     Serial.print("Encoder Value: ");
     Serial.println(value);
+#endif
     int min,secs;
     min = value / 60;
     secs = value % 60;
@@ -98,10 +104,13 @@ void loop() {
 
   ClickEncoder::Button b = encoder->getButton();
   if (b != ClickEncoder::Open) {
+    
+#ifdef USE_SERIAL
     Serial.print("Button: ");
-    #define VERBOSECASE(label) case label: Serial.println(#label); break;
+#endif
     switch (b) {
       /*   
+      #define VERBOSECASE(label) case label: Serial.println(#label); break;
       VERBOSECASE(ClickEncoder::Pressed);
       VERBOSECASE(ClickEncoder::Held)
       VERBOSECASE(ClickEncoder::Released)
@@ -109,14 +118,18 @@ void loop() {
       VERBOSECASE(ClickEncoder::DoubleClicked)
       */
       case ClickEncoder::DoubleClicked:
+#ifdef USE_SERIAL
         Serial.println("BTN_doubleclicked");  
+#endif
         if(++prog_mode > 3)
          prog_mode = 0;
         EEPROM.write(EEPROM_MODE_ADDY,prog_mode);
         display.setSegments(modes_disp[prog_mode],1,0);
         break;
       case ClickEncoder::Clicked:
-        Serial.println("BTN_clicked"); 
+#ifdef USE_SERIAL
+        Serial.println("BTN_clicked");
+#endif 
         if(last_write != value){
          EEPROM.write(EEPROM_TIME_ADDY,value);
          last_write=value;
