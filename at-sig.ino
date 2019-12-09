@@ -19,20 +19,34 @@
 
 #define USE_SERIAL 1
 
-#define DISP_CLK  2
-#define DISP_DIO  3
-#define INPUT_CLK 4
-#define INPUT_DT  5
-#define INPUT_SW  6
+#define LEFT_INT         2
+#define RIGHT_INT        3
+#define DISP_CLK         4
+#define DISP_DIO         5
+#define INPUT_CLK        6
+#define INPUT_DT         7
+#define INPUT_SW         8
+#define CENTER_DECTOR    9
 
-#define EEPROM_KEY 0b11001100
-#define EEPROM_KEY_ADDY 0
+#define EEPROM_KEY       0b11001100
+#define EEPROM_KEY_ADDY  0
 #define EEPROM_TIME_ADDY 1
 #define EEPROM_MODE_ADDY 2
 
-#define MODE_TIME   0
-#define MODE_CENTER 1
-#define MODE_BOTH   2
+#define MODE_TIME        0
+#define MODE_CENTER      1
+#define MODE_BOTH        2
+
+enum signalState {
+  signalOff = 0,
+  signalOn
+};
+
+enum centeredState {
+   startCentered = 0,
+   unCentered,
+   centered   
+};
 
 const uint8_t modes_disp[] = {
   SEG_F | SEG_E | SEG_G | SEG_D,
@@ -48,17 +62,56 @@ int16_t last, value;
 int16_t last_write;
 
 int prog_mode;
-unsigned long long time_tracking;
+volatile unsigned long long time_tracking;
+volatile centeredState center_tracking;
+volatile signalState currentLeftState;
+volatile signalState currentRightState;
 
 void timerIsr() {
   encoder->service();
 }
+
+void leftISR() {
+  currentLeftState = signalOn;
+  if(prog_mode == MODE_TIME) {
+
+  }else if(prog_mode == MODE_CENTER) {
+    int startState = digitalRead(CENTER_DECTOR);
+    switch(startState){
+      case HIGH:
+       center_tracking = startCentered;
+       break;
+      case LOW:
+       center_tracking = unCentered;
+      break;       
+    }
+  }
+}
+
+void rightISR() {  
+  currentRightState = signalOn;
+  if(prog_mode == MODE_TIME) {
+
+  }else if(prog_mode == MODE_CENTER) {
+    int startState = digitalRead(CENTER_DECTOR);
+    switch(startState){
+      case HIGH:
+       center_tracking = startCentered;
+       break;
+      case LOW:
+       center_tracking = unCentered;
+      break;       
+    }
+  }
+}
+
 
 void setup() {
 #ifdef USE_SERIAL
   Serial.begin(9600);
 #endif 
 
+  
   int key = 0b00000000;
   EEPROM.get(EEPROM_KEY_ADDY,key);
   if(key != EEPROM_KEY) {
@@ -82,7 +135,10 @@ void setup() {
   encoder = new ClickEncoder(INPUT_CLK, INPUT_DT,INPUT_SW);
   Timer1.initialize(1000);
   Timer1.attachInterrupt(timerIsr); 
-  
+
+  attachInterrupt(digitalPinToInterrupt(LEFT_INT),leftISR,RISING);
+  attachInterrupt(digitalPinToInterrupt(RIGHT_INT),rightISR,RISING);
+
 }
 
 void loop() {
